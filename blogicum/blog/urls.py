@@ -1,15 +1,23 @@
 from django.urls import path
 
 from . import views
-from .views import category_posts, index, post_detail
 
 app_name = 'blog'
 
 urlpatterns = [
-    path('', index, name='index'),
+    path(
+        '',
+        views.index,
+        name='index'
+    ),
+    path(
+        'category/<slug:category_slug>/',
+        views.category_posts,
+        name='category_posts'
+    ),
     path(
         'profile/<slug:username>/',
-        views.ProfileDetailView.as_view(),
+        views.ProfileListView.as_view(),
         name='profile'
     ),
     path(
@@ -47,10 +55,14 @@ urlpatterns = [
         views.CommentDeleteView.as_view(),
         name='delete_comment'
     ),
-    path('posts/<int:post_id>/', post_detail, name='post_detail'),
     path(
-        'category/<slug:category_slug>/',
-        category_posts,
-        name='category_posts'
+        'posts/<int:post_id>/',
+        views.post_detail,
+        name='post_detail'
+    ),
+    path(
+        'auth/registration/',
+        views.UserCreateView.as_view(),
+        name='registration',
     ),
 ]

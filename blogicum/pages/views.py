@@ -19,4 +19,4 @@ class AboutPage(TemplateView):
 
 
 class RulesPage(TemplateView):
-    template_name = 'pages/about.html'
+    template_name = 'pages/rules.html'

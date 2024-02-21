@@ -6,18 +6,25 @@ from .constants import MAX_LENGTH, SLICE_STR
 User = get_user_model()
 
 
-class IsPublishedCreatedAt(models.Model):
-    is_published = models.BooleanField(
-        'Опубликовано',
-        default=True,
-        help_text='Снимите галочку, чтобы скрыть публикацию.'
-    )
+class CreatedAt(models.Model):
     created_at = models.DateTimeField(
         'Добавлено',
         auto_now_add=True,
     )
 
     class Meta:
+        abstract = True
+        ordering = ('created_at',)
+
+
+class IsPublishedCreatedAt(CreatedAt):
+    is_published = models.BooleanField(
+        'Опубликовано',
+        default=True,
+        help_text='Снимите галочку, чтобы скрыть публикацию.'
+    )
+
+    class Meta(CreatedAt.Meta):
         abstract = True
 
 
@@ -33,7 +40,7 @@ class Category(IsPublishedCreatedAt):
         )
     )
 
-    class Meta:
+    class Meta(IsPublishedCreatedAt.Meta):
         verbose_name = 'категория'
         verbose_name_plural = 'Категории'
 
@@ -44,7 +51,7 @@ class Category(IsPublishedCreatedAt):
 class Location(IsPublishedCreatedAt):
     name = models.CharField('Название места', max_length=MAX_LENGTH)
 
-    class Meta:
+    class Meta(IsPublishedCreatedAt.Meta):
         verbose_name = 'местоположение'
         verbose_name_plural = 'Местоположения'
 
@@ -92,7 +99,7 @@ class Post(IsPublishedCreatedAt):
         return self.title[:SLICE_STR]
 
 
-class Comment(models.Model):
+class Comment(CreatedAt):
     text = models.TextField('Текст комментария', max_length=MAX_LENGTH)
     post = models.ForeignKey(
         Post,
@@ -100,17 +107,16 @@ class Comment(models.Model):
         related_name='comments',
         verbose_name='Пост'
     )
-    created_at = models.DateTimeField('Добавлено', auto_now_add=True)
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        verbose_name='Автор комментария'
+        verbose_name='Автор комментария',
     )
 
-    class Meta:
+    class Meta(CreatedAt.Meta):
         verbose_name = 'комментарий'
         verbose_name_plural = 'Комментарии'
-        ordering = ('created_at',)
+        default_related_name = 'comments'
 
     def __str__(self):
         return f'Комментарий от {self.author}'
