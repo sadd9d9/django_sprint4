@@ -104,7 +104,6 @@ class Comment(CreatedAt):
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
-        related_name='comments',
         verbose_name='Пост'
     )
     author = models.ForeignKey(

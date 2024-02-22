@@ -1,33 +1,16 @@
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
-from django.db.models import Count
 from django.http import Http404
-from django.http.response import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse, reverse_lazy
-from django.utils.timezone import now
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from .constants import POSTS_PER_PAGE
 from .forms import CommentForm, PostForm
-from .models import Category, Comment, Post, User
-
-
-def posts_annotate(posts):
-    return posts.select_related(
-        'author',
-        'category',
-        'location'
-    ).annotate(comment_count=Count('comments')).order_by('-pub_date')
-
-
-def posts_filter(posts):
-    return posts.filter(
-        pub_date__lte=now(),
-        is_published=True,
-        category__is_published=True
-    )
+from .mixins import CommentMixin, OnlyAuthorMixin, PostMixin
+from .models import Category, Post, User
+from .services import posts_annotate, posts_filter
 
 
 def index(request):
@@ -92,50 +75,6 @@ def category_posts(request, category_slug):
     )
 
 
-class OnlyAuthorMixin(UserPassesTestMixin):
-
-    def test_func(self):
-        return self.get_object().author == self.request.user
-
-
-class PostMixin(LoginRequiredMixin, OnlyAuthorMixin):
-    model = Post
-    form_class = PostForm
-    template_name = 'blog/create.html'
-    pk_url_kwarg = 'post_id'
-
-    def handle_no_permission(self):
-        return HttpResponseRedirect(
-            reverse('blog:post_detail', kwargs={
-                'post_id': self.get_object().pk})
-        )
-
-    def get_success_url(self):
-        return reverse(
-            'blog:profile',
-            kwargs={'username': self.request.user.username}
-        )
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['form'] = PostForm(
-            self.request.POST or None,
-            instance=self.get_object()
-        )
-        return context
-
-
-class CommentMixin(LoginRequiredMixin):
-    model = Comment
-    form_class = CommentForm
-
-    def get_success_url(self):
-        return reverse(
-            'blog:post_detail',
-            kwargs={'post_id': Post.objects.get(pk=self.kwargs['post_id']).pk}
-        )
-
-
 class PostsCreateView(LoginRequiredMixin, CreateView):
     model = Post
     form_class = PostForm
@@ -157,7 +96,7 @@ class PostsUpdateView(PostMixin, UpdateView):
     def get_success_url(self):
         return reverse(
             'blog:post_detail',
-            kwargs={'post_id': self.get_object().pk}
+            kwargs={self.pk_url_kwarg: self.get_object().pk}
         )
 
 
@@ -216,10 +155,9 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
     success_url = reverse_lazy('blog:index')
 
     def get_object(self):
-        if self.kwargs.get('username') != str(self.request.user):
+        if self.kwargs.get('username') != self.request.user.username:
             raise Http404
-        else:
-            return self.request.user
+        return self.request.user
 
 
 class UserCreateView(CreateView):
